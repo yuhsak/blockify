@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { json, isSlackBlockKit } from '@/lib/valibot'
+import { json, isSlackBlockKit, SlackBlockKitSchema } from '@/lib/valibot'
 
 const formSchema = v.object({
   token: v.pipe(v.string(), v.regex(/^xoxc\-/, 'Token is something like "xoxc-xxxxxxx".')),
@@ -36,6 +36,7 @@ type FormSchema = v.InferOutput<typeof formSchema>
 
 const placeholder = JSON.stringify(
   {
+    text: 'Notification text',
     blocks: [
       {
         type: 'rich_text',
@@ -45,7 +46,28 @@ const placeholder = JSON.stringify(
             elements: [
               {
                 type: 'text',
-                text: 'example post',
+                text: 'Example block',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    attachments: [
+      {
+        color: '#ff0000',
+        blocks: [
+          {
+            type: 'rich_text',
+            elements: [
+              {
+                type: 'rich_text_section',
+                elements: [
+                  {
+                    type: 'text',
+                    text: 'Example attachment',
+                  },
+                ],
               },
             ],
           },
@@ -64,23 +86,31 @@ const extractTs = (ts: string) => {
   return `${b}.${c}`
 }
 
+const escapeQuote = (text: string) =>
+  text
+    .split("'")
+    .map((item) => `'${item}'`)
+    .join("\\'")
+
 const generateCurlCmd = (params: FormSchema) => {
   const exec = `curl`
   const method = `--request POST`
   const url = `--url https://app.slack.com/api/chat.postMessage`
   const header = `--header 'Content-Type: multipart/form-data'`
   const cookie = `--cookie d=${params.cookie}`
-  const blocksObj = JSON.parse(params.blocks)
-  const blocks = JSON.stringify(blocksObj.blocks)
-    .split("'")
-    .map((item) => `'${item}'`)
-    .join("\\'")
+  const json = v.parse(SlackBlockKitSchema, JSON.parse(params.blocks))
+  const text = json.text ? escapeQuote(json.text) : null
+  const blocks = escapeQuote(JSON.stringify(json.blocks))
+  const attachments = json.attachments ? escapeQuote(JSON.stringify(json.attachments)) : null
+  const threadTs = params.threadTs ? extractTs(params.threadTs) : null
   const forms = [
     `--form token=${params.token}`,
     `--form channel=${params.channelId}`,
     `--form type=message`,
     `--form blocks=${blocks}`,
-    ...(params.threadTs ? [`--form thread_ts=${extractTs(params.threadTs)}`] : []),
+    ...(text ? [`--form text=${text}`] : []),
+    ...(attachments ? [`--form attachments=${attachments}`] : []),
+    ...(threadTs ? [`--form thread_ts=${threadTs}`] : []),
   ]
   const cmd = [exec, method, url, header, cookie, ...forms].join(' \\\n\t')
   return cmd
@@ -102,7 +132,7 @@ export const GenerateCurlCommandForm = forwardRef<HTMLFormElement, GenerateCurlC
         cookie: '',
         channelId: '',
         threadTs: '',
-        blocks: '',
+        blocks: placeholder,
       },
     })
 

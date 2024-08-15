@@ -1,4 +1,4 @@
-import { pipe, string, object, array, record, unknown, check, safeParse } from 'valibot'
+import { pipe, string, object, array, record, unknown, check, safeParse, optional } from 'valibot'
 
 const boolify = <T extends unknown[], U>(fn: (...args: T) => U) => {
   return (...args: T): boolean => {
@@ -20,7 +20,9 @@ export const jsonValue = (message?: string | undefined) => {
 }
 
 export const SlackBlockKitSchema = object({
+  text: optional(string()),
   blocks: array(record(string(), pipe(unknown(), jsonValue()))),
+  attachments: optional(array(record(string(), pipe(unknown(), jsonValue())))),
 })
 
 export const isSlackBlockKit = (message?: string | undefined) => {
