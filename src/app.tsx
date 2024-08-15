@@ -8,6 +8,14 @@ function App() {
   const [curlCmd, setCurlCmd] = useState('')
   const { toast } = useToast()
 
+  const handleGenerate = (curlCmd: string) => {
+    setCurlCmd(curlCmd)
+    toast({
+      title: 'Generated!',
+      duration: 1000,
+    })
+  }
+
   const handleClickCopy = () => {
     const textarea: HTMLTextAreaElement | null = document.querySelector('textarea#curl-command')
     if (textarea) {
@@ -28,7 +36,7 @@ function App() {
         <h1 className='text-4xl font-bold'>Blockify</h1>
         <p className='text-muted-foreground'>Post to slack with Block Kit.</p>
       </div>
-      <GenerateCurlCommandForm onGenerate={setCurlCmd} />
+      <GenerateCurlCommandForm onGenerate={handleGenerate} />
       <hr />
       <Textarea
         id='curl-command'
